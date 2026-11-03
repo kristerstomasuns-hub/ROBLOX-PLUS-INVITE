@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { ClaimProgress } from '../components/ClaimProgress'
 import { InviteModal } from '../components/InviteModal'
 import { PlusBenefits } from '../components/PlusBenefits'
+import { SeoFaq } from '../components/SeoFaq'
 import { INVITE_ALLOCATION, SITE } from '../config'
 import { readOrCreateCode } from '../lib/storage'
 import { motionTokens, useMotionPresets } from '../motion/tokens'
@@ -89,6 +90,8 @@ export function HomePage() {
           <PlusBenefits />
         </div>
       </div>
+
+      <SeoFaq />
 
       <AnimatePresence>
         {modalOpen ? (

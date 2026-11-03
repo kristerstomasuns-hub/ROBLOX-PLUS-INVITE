@@ -30,6 +30,39 @@ function ScrollToTop() {
   return null
 }
 
+const SITE_ORIGIN = 'https://www.dev-roblox.com'
+const PAGE_TITLES: Record<string, string> = {
+  '/': 'Roblox Plus Invite',
+  '/check': 'How It Works | Roblox Plus Invite',
+  '/proof': 'Proof | Roblox Plus Invite',
+  '/faq': 'FAQ | Roblox Plus Invite',
+  '/terms': 'Terms | Roblox Plus Invite',
+  '/privacy': 'Privacy | Roblox Plus Invite',
+}
+
+function RouteMetadata() {
+  const { pathname } = useLocation()
+
+  useEffect(() => {
+    const path = pathname.startsWith('/plus/invite/') ? '/' : pathname
+    const canonicalPath = path === '/' ? '/' : path.replace(/\/+$/, '')
+
+    document.title = PAGE_TITLES[path] ?? 'Roblox Plus Invite'
+
+    let canonical = document.head.querySelector<HTMLLinkElement>(
+      'link[rel="canonical"]',
+    )
+    if (!canonical) {
+      canonical = document.createElement('link')
+      canonical.rel = 'canonical'
+      document.head.appendChild(canonical)
+    }
+    canonical.href = `${SITE_ORIGIN}${canonicalPath}`
+  }, [pathname])
+
+  return null
+}
+
 export function AppRoutes() {
   const location = useLocation()
   const { pageVariants } = useMotionPresets()
@@ -37,6 +70,7 @@ export function AppRoutes() {
   return (
     <MotionConfig reducedMotion="user">
       <ScrollToTop />
+      <RouteMetadata />
       <div className="flex min-h-svh flex-col bg-bg text-ink">
         <Header />
         <AnimatePresence initial={false} mode="wait">

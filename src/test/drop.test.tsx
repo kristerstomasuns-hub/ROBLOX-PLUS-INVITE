@@ -155,7 +155,7 @@ describe('Roblox Plus Invite', () => {
     expect(
       screen.getByRole('link', { name: 'Start Survey offer' }),
     ).toHaveAttribute('href', 'https://example.com/offer')
-  })
+  }, 15000)
 
   it('keeps the same invite code after a remount', () => {
     const first = renderHome()

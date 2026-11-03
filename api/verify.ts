@@ -23,35 +23,49 @@ type LookupResult = {
   body: unknown
 }
 
+type ApiRequest = {
+  method?: string
+  headers: Record<string, string | string[] | undefined>
+  body?: unknown
+}
+
+type ApiResponse = {
+  status(code: number): ApiResponse
+  setHeader(name: string, value: string): void
+  json(body: unknown): void
+  end(): void
+}
+
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? DEFAULT_ORIGINS)
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)
 
-function corsHeaders(origin: string | null): Record<string, string> {
-  const allowed = origin && allowedOrigins.includes(origin) ? origin : ''
-
-  return {
-    ...(allowed ? { 'Access-Control-Allow-Origin': allowed } : {}),
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    Vary: 'Origin',
-  }
+function getOrigin(request: ApiRequest): string | null {
+  const origin = request.headers.origin
+  if (Array.isArray(origin)) return origin[0] ?? null
+  return origin ?? null
 }
 
-function json(
-  body: unknown,
+function applyCors(response: ApiResponse, origin: string | null): void {
+  const allowed = origin && allowedOrigins.includes(origin) ? origin : ''
+  if (allowed) response.setHeader('Access-Control-Allow-Origin', allowed)
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  response.setHeader('Vary', 'Origin')
+}
+
+function sendJson(
+  response: ApiResponse,
   status: number,
-  headers: Record<string, string>,
-): Response {
-  return new Response(JSON.stringify(body), {
-    headers: {
-      ...headers,
-      'Cache-Control': 'no-store',
-      'Content-Type': 'application/json',
-    },
-    status,
-  })
+  body: unknown,
+  origin: string | null,
+): void {
+  applyCors(response, origin)
+  response.status(status)
+  response.setHeader('Cache-Control', 'no-store')
+  response.setHeader('Content-Type', 'application/json')
+  response.json(body)
 }
 
 async function lookupRobloxUser(usernameInput: string): Promise<LookupResult> {
@@ -136,26 +150,41 @@ export const config = {
   maxDuration: 10,
 }
 
-export default async function handler(request: Request): Promise<Response> {
-  const origin = request.headers.get('origin')
-  const headers = corsHeaders(origin)
+export default async function handler(
+  request: ApiRequest,
+  response: ApiResponse,
+): Promise<void> {
+  const origin = getOrigin(request)
+  const method = request.method?.toUpperCase() ?? 'GET'
 
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers, status: 204 })
+  if (method === 'OPTIONS') {
+    applyCors(response, origin)
+    response.status(204).end()
+    return
   }
 
-  if (request.method !== 'POST') {
-    return json({ error: 'Method not allowed' }, 405, headers)
+  if (method !== 'POST') {
+    sendJson(response, 405, { error: 'Method not allowed' }, origin)
+    return
   }
 
-  let username = ''
-  try {
-    const body = (await request.json()) as { username?: unknown }
-    username = typeof body.username === 'string' ? body.username : ''
-  } catch {
-    return json({ error: 'Invalid request body.' }, 400, headers)
+  let body: unknown = request.body
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body)
+    } catch {
+      sendJson(response, 400, { error: 'Invalid request body.' }, origin)
+      return
+    }
   }
+
+  const payload =
+    body && typeof body === 'object'
+      ? (body as { username?: unknown })
+      : null
+  const username =
+    payload && typeof payload.username === 'string' ? payload.username : ''
 
   const result = await lookupRobloxUser(username)
-  return json(result.body, result.status, headers)
+  sendJson(response, result.status, result.body, origin)
 }

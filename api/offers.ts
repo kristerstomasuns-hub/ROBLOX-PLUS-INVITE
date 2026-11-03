@@ -31,35 +31,52 @@ type FeedResponse = {
   offers?: unknown
 }
 
+type ApiRequest = {
+  method?: string
+  headers: Record<string, string | string[] | undefined>
+  query?: Record<string, string | string[] | undefined>
+}
+
+type ApiResponse = {
+  status(code: number): ApiResponse
+  setHeader(name: string, value: string): void
+  json(body: unknown): void
+  end(): void
+}
+
 const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? DEFAULT_ORIGINS)
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)
 
-function corsHeaders(origin: string | null): Record<string, string> {
-  const allowed = origin && allowedOrigins.includes(origin) ? origin : ''
-
-  return {
-    ...(allowed ? { 'Access-Control-Allow-Origin': allowed } : {}),
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    Vary: 'Origin',
-  }
+function getHeader(
+  request: ApiRequest,
+  name: string,
+): string | undefined {
+  const value = request.headers[name]
+  if (Array.isArray(value)) return value[0]
+  return value
 }
 
-function json(
-  body: unknown,
+function applyCors(response: ApiResponse, origin: string | null): void {
+  const allowed = origin && allowedOrigins.includes(origin) ? origin : ''
+  if (allowed) response.setHeader('Access-Control-Allow-Origin', allowed)
+  response.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  response.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
+  response.setHeader('Vary', 'Origin')
+}
+
+function sendJson(
+  response: ApiResponse,
   status: number,
-  headers: Record<string, string>,
-): Response {
-  return new Response(JSON.stringify(body), {
-    headers: {
-      ...headers,
-      'Cache-Control': 'no-store',
-      'Content-Type': 'application/json',
-    },
-    status,
-  })
+  body: unknown,
+  origin: string | null,
+): void {
+  applyCors(response, origin)
+  response.status(status)
+  response.setHeader('Cache-Control', 'no-store')
+  response.setHeader('Content-Type', 'application/json')
+  response.json(body)
 }
 
 function safeHttpUrl(value: unknown): string | null {
@@ -225,28 +242,41 @@ export const config = {
   maxDuration: 10,
 }
 
-export default async function handler(request: Request): Promise<Response> {
-  const origin = request.headers.get('origin')
-  const headers = corsHeaders(origin)
+export default async function handler(
+  request: ApiRequest,
+  response: ApiResponse,
+): Promise<void> {
+  const origin = getHeader(request, 'origin') ?? null
+  const method = request.method?.toUpperCase() ?? 'GET'
 
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers, status: 204 })
+  if (method === 'OPTIONS') {
+    applyCors(response, origin)
+    response.status(204).end()
+    return
   }
 
-  if (request.method !== 'GET') {
-    return json({ error: 'Method not allowed' }, 405, headers)
+  if (method !== 'GET') {
+    sendJson(response, 405, { error: 'Method not allowed' }, origin)
+    return
   }
 
-  const url = new URL(request.url)
-  const code = url.searchParams.get('s1') ?? 'guest'
-  const forwardedFor = request.headers.get('x-forwarded-for') ?? ''
+  const rawCode = request.query?.s1
+  const code = Array.isArray(rawCode)
+    ? (rawCode[0] ?? 'guest')
+    : (rawCode ?? 'guest')
+  const forwardedFor = getHeader(request, 'x-forwarded-for') ?? ''
   const ip = forwardedFor.split(',')[0]?.trim() || undefined
-  const userAgent = request.headers.get('user-agent') ?? undefined
+  const userAgent = getHeader(request, 'user-agent')
 
   try {
     const offers = await fetchAdBlueOffers({ code, ip, userAgent })
-    return json({ offers }, 200, headers)
+    sendJson(response, 200, { offers }, origin)
   } catch {
-    return json({ error: 'Offers are unavailable right now.' }, 502, headers)
+    sendJson(
+      response,
+      502,
+      { error: 'Offers are unavailable right now.' },
+      origin,
+    )
   }
 }

@@ -4,8 +4,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppRoutes } from '../App'
 
 function renderHome() {
+  return renderAt('/')
+}
+
+function renderAt(path: string) {
   return render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter initialEntries={[path]}>
       <AppRoutes />
     </MemoryRouter>,
   )
@@ -187,6 +191,21 @@ describe('Roblox Plus Invite', () => {
       }),
     ).toBeInTheDocument()
     expect(screen.getByText('73 left in this batch')).toBeInTheDocument()
+  })
+
+  it('serves the full page on a branded invite path', () => {
+    renderAt('/plus/invite/H5Ig4B')
+
+    expect(
+      screen.getByRole('heading', {
+        level: 1,
+        name: 'Join me on Roblox Plus for 30 days free',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: /page not found/i }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByTestId('get-invite')).toBeInTheDocument()
   })
 
   it('links the logo back to the main page', () => {

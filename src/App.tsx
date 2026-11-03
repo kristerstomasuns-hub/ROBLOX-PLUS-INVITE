@@ -50,6 +50,7 @@ export function AppRoutes() {
           >
             <Routes location={location}>
               <Route element={<HomePage />} path="/" />
+              <Route element={<HomePage />} path="/plus/invite/*" />
               <Route element={<CheckPage />} path="/check" />
               <Route element={<ProofPage />} path="/proof" />
               <Route element={<FaqPage />} path="/faq" />

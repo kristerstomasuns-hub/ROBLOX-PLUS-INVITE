@@ -14,11 +14,6 @@ const QUESTIONS = [
     answer:
       'Yes — this referral offers 30 days of Roblox Plus at no cost. No payment details are required here, and each eligible user may claim one invite.',
   },
-  {
-    question: 'Is this an official Roblox website?',
-    answer:
-      'No. This is an independent developer referral and is not affiliated with or endorsed by Roblox. Roblox and Roblox Plus are trademarks of Roblox Corporation.',
-  },
 ] as const
 
 export function SeoFaq() {

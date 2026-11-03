@@ -27,10 +27,6 @@ export function Footer() {
               A 30-day Roblox Plus referral offer shared by a developer
               participating in the program.
             </p>
-            <p className="text-[11px] leading-5 text-muted">
-              This is an independent referral and is not affiliated with or
-              endorsed by Roblox. Each eligible user may claim one 30-day trial.
-            </p>
           </div>
 
           <nav

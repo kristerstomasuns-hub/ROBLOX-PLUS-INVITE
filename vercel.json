@@ -6,7 +6,27 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
+      "source": "/check",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/proof",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/faq",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/plus/invite/:code",
       "destination": "/index.html"
     }
   ],
